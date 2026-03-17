@@ -37,6 +37,12 @@ function createInput() {
   };
 }
 
+function createTextarea() {
+  const textarea = createInput();
+  textarea.tagName = "TEXTAREA";
+  return textarea;
+}
+
 function createHost() {
   return {
     _input: null,
@@ -164,6 +170,29 @@ test("directive respects IME composition flow", () => {
   assert.equal(inputEvents, 2);
 });
 
+test("directive supports textarea elements", () => {
+  const textarea = createTextarea();
+  const host = createHost();
+  host._input = textarea;
+  textarea.value = "abcd";
+
+  const binding = { value: 3 };
+  const vnode = {};
+
+  maxlenDirective.bind(host, binding, vnode);
+  maxlenDirective.inserted(host, binding, vnode);
+
+  let inputEvents = 0;
+  textarea.addEventListener("input", () => {
+    inputEvents += 1;
+  });
+
+  textarea.dispatchEvent(new Event("input"));
+
+  assert.equal(textarea.value, "abc");
+  assert.equal(inputEvents, 2);
+});
+
 test("directive dispatches input for v-model sync", () => {
   const input = createInput();
   const host = createHost();
@@ -249,6 +278,76 @@ test("auto-maxlen plugin truncates and dispatches input", () => {
   input.dispatchEvent(new Event("input"));
 
   assert.equal(input.value, "abc");
+  assert.equal(inputEvents, 2);
+});
+
+test("auto-maxlen plugin respects IME composition flow", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredName = name;
+      this._registeredDefinition = definition;
+    }
+  };
+
+  autoMaxlen(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = { $el: host, $props: { maxlen: 3 } };
+  wrapper.mounted.call(instance);
+
+  let inputEvents = 0;
+  input.addEventListener("input", () => {
+    inputEvents += 1;
+  });
+
+  input.dispatchEvent(new Event("compositionstart"));
+  input.value = "abcd";
+  input.dispatchEvent(new Event("input"));
+
+  assert.equal(input.value, "abcd");
+  assert.equal(inputEvents, 1);
+
+  input.dispatchEvent(new Event("compositionend"));
+
+  assert.equal(input.value, "abc");
+  assert.equal(inputEvents, 2);
+});
+
+test("auto-maxlen plugin supports textarea elements", () => {
+  const textarea = createTextarea();
+  const host = createHost();
+  host._input = textarea;
+  textarea.value = "abcd";
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredName = name;
+      this._registeredDefinition = definition;
+    }
+  };
+
+  autoMaxlen(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = { $el: host, $props: { maxlen: 3 } };
+  wrapper.mounted.call(instance);
+
+  let inputEvents = 0;
+  textarea.addEventListener("input", () => {
+    inputEvents += 1;
+  });
+
+  textarea.dispatchEvent(new Event("input"));
+
+  assert.equal(textarea.value, "abc");
   assert.equal(inputEvents, 2);
 });
 
