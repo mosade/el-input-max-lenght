@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { enforceMaxLen } = require("../src/utils/maxlen");
 const maxlenDirective = require("../src/directives/maxlen");
+const autoMaxlen = require("../src/plugins/auto-maxlen");
 
 function createInput() {
   const listeners = new Map();
@@ -80,4 +81,38 @@ test("directive does not duplicate listeners on update", () => {
   assert.equal(input._listenerCount("input"), 1);
   assert.equal(input._listenerCount("compositionstart"), 1);
   assert.equal(input._listenerCount("compositionend"), 1);
+});
+
+test("auto-maxlen plugin wraps ElInput and attaches listeners", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredName = name;
+      this._registeredDefinition = definition;
+    }
+  };
+
+  autoMaxlen(Vue);
+
+  assert.equal(Vue._registeredName, "ElInput");
+  const wrapper = Vue._registeredDefinition;
+  assert.equal(wrapper.props.maxlen.default, undefined);
+
+  const instance = { $el: host, $props: { maxlen: 3 } };
+  wrapper.mounted.call(instance);
+
+  assert.equal(input._listenerCount("input"), 1);
+  assert.equal(input._listenerCount("compositionstart"), 1);
+  assert.equal(input._listenerCount("compositionend"), 1);
+
+  wrapper.beforeDestroy.call(instance);
+
+  assert.equal(input._listenerCount("input"), 0);
+  assert.equal(input._listenerCount("compositionstart"), 0);
+  assert.equal(input._listenerCount("compositionend"), 0);
 });
