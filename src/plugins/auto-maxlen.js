@@ -21,43 +21,82 @@ module.exports = function install(Vue) {
       maxlen: { type: [Number, String], default: undefined }
     },
     mounted() {
-      const input = findNativeInput(this.$el);
-      if (!input) return;
-      let composing = false;
-
-      const onCompositionStart = () => {
-        composing = true;
+      const attach = () => {
+        attachListeners(this);
       };
-      const onCompositionEnd = () => {
-        composing = false;
-        const limit = getLimit(this.$props);
-        const result = enforceMaxLen(input.value, limit);
-        if (result.truncated) {
-          input.value = result.value;
-          input.dispatchEvent(new Event("input"));
-        }
-      };
-      const onInput = () => {
-        if (composing) return;
-        const limit = getLimit(this.$props);
-        const result = enforceMaxLen(input.value, limit);
-        if (result.truncated) {
-          input.value = result.value;
-          input.dispatchEvent(new Event("input"));
-        }
-      };
-
-      input.addEventListener("compositionstart", onCompositionStart);
-      input.addEventListener("compositionend", onCompositionEnd);
-      input.addEventListener("input", onInput);
-      this.__maxlenCleanup__ = () => {
-        input.removeEventListener("compositionstart", onCompositionStart);
-        input.removeEventListener("compositionend", onCompositionEnd);
-        input.removeEventListener("input", onInput);
-      };
+      if (typeof this.$nextTick === "function") {
+        this.$nextTick(attach);
+      } else {
+        attach();
+      }
+    },
+    updated() {
+      attachListeners(this);
     },
     beforeDestroy() {
-      if (this.__maxlenCleanup__) this.__maxlenCleanup__();
+      if (this.__maxlenState__ && this.__maxlenState__.cleanup) {
+        this.__maxlenState__.cleanup();
+      }
+      delete this.__maxlenState__;
     }
   });
 };
+
+function attachListeners(instance) {
+  if (!instance) return;
+  if (!instance.__maxlenState__) {
+    instance.__maxlenState__ = {
+      input: null,
+      cleanup: null,
+      composing: false
+    };
+  }
+
+  const state = instance.__maxlenState__;
+  const input = findNativeInput(instance.$el);
+
+  if (!input) {
+    if (state.cleanup) state.cleanup();
+    state.input = null;
+    state.cleanup = null;
+    state.composing = false;
+    return;
+  }
+
+  if (state.input === input && state.cleanup) return;
+  if (state.cleanup) state.cleanup();
+
+  state.input = input;
+  state.composing = false;
+
+  const onCompositionStart = () => {
+    state.composing = true;
+  };
+  const onCompositionEnd = () => {
+    state.composing = false;
+    const limit = getLimit(instance.$props);
+    const result = enforceMaxLen(input.value, limit);
+    if (result.truncated) {
+      input.value = result.value;
+      input.dispatchEvent(new Event("input"));
+    }
+  };
+  const onInput = () => {
+    if (state.composing) return;
+    const limit = getLimit(instance.$props);
+    const result = enforceMaxLen(input.value, limit);
+    if (result.truncated) {
+      input.value = result.value;
+      input.dispatchEvent(new Event("input"));
+    }
+  };
+
+  input.addEventListener("compositionstart", onCompositionStart);
+  input.addEventListener("compositionend", onCompositionEnd);
+  input.addEventListener("input", onInput);
+  state.cleanup = () => {
+    input.removeEventListener("compositionstart", onCompositionStart);
+    input.removeEventListener("compositionend", onCompositionEnd);
+    input.removeEventListener("input", onInput);
+  };
+}

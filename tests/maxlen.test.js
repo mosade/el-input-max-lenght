@@ -4,6 +4,14 @@ const { enforceMaxLen } = require("../src/utils/maxlen");
 const maxlenDirective = require("../src/directives/maxlen");
 const autoMaxlen = require("../src/plugins/auto-maxlen");
 
+if (typeof Event === "undefined") {
+  global.Event = class Event {
+    constructor(type) {
+      this.type = type;
+    }
+  };
+}
+
 function createInput() {
   const listeners = new Map();
   return {
@@ -115,4 +123,98 @@ test("auto-maxlen plugin wraps ElInput and attaches listeners", () => {
   assert.equal(input._listenerCount("input"), 0);
   assert.equal(input._listenerCount("compositionstart"), 0);
   assert.equal(input._listenerCount("compositionend"), 0);
+});
+
+test("auto-maxlen plugin truncates and dispatches input", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+  input.value = "abcd";
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredName = name;
+      this._registeredDefinition = definition;
+    }
+  };
+
+  autoMaxlen(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = { $el: host, $props: { maxlen: 3 } };
+  wrapper.mounted.call(instance);
+
+  let inputEvents = 0;
+  input.addEventListener("input", () => {
+    inputEvents += 1;
+  });
+
+  input.dispatchEvent(new Event("input"));
+
+  assert.equal(input.value, "abc");
+  assert.equal(inputEvents, 2);
+});
+
+test("auto-maxlen plugin attaches when input appears later", () => {
+  const host = createHost();
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredName = name;
+      this._registeredDefinition = definition;
+    }
+  };
+
+  autoMaxlen(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = { $el: host, $props: { maxlen: 3 } };
+  wrapper.mounted.call(instance);
+
+  const input = createInput();
+  host._input = input;
+
+  assert.ok(typeof wrapper.updated === "function");
+  wrapper.updated.call(instance);
+
+  assert.equal(input._listenerCount("input"), 1);
+  assert.equal(input._listenerCount("compositionstart"), 1);
+  assert.equal(input._listenerCount("compositionend"), 1);
+});
+
+test("auto-maxlen plugin reattaches on input replacement", () => {
+  const host = createHost();
+  const firstInput = createInput();
+  host._input = firstInput;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredName = name;
+      this._registeredDefinition = definition;
+    }
+  };
+
+  autoMaxlen(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = { $el: host, $props: { maxlen: 3 } };
+  wrapper.mounted.call(instance);
+
+  const secondInput = createInput();
+  host._input = secondInput;
+
+  wrapper.updated.call(instance);
+
+  assert.equal(firstInput._listenerCount("input"), 0);
+  assert.equal(firstInput._listenerCount("compositionstart"), 0);
+  assert.equal(firstInput._listenerCount("compositionend"), 0);
+  assert.equal(secondInput._listenerCount("input"), 1);
+  assert.equal(secondInput._listenerCount("compositionstart"), 1);
+  assert.equal(secondInput._listenerCount("compositionend"), 1);
 });
