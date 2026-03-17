@@ -91,6 +91,101 @@ test("directive does not duplicate listeners on update", () => {
   assert.equal(input._listenerCount("compositionend"), 1);
 });
 
+test("directive truncates and dispatches input", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+  input.value = "abcd";
+
+  const binding = { value: 3 };
+  const vnode = {};
+
+  maxlenDirective.bind(host, binding, vnode);
+  maxlenDirective.inserted(host, binding, vnode);
+
+  let inputEvents = 0;
+  input.addEventListener("input", () => {
+    inputEvents += 1;
+  });
+
+  input.dispatchEvent(new Event("input"));
+
+  assert.equal(input.value, "abc");
+  assert.equal(inputEvents, 2);
+});
+
+test("directive uses binding maxlen over vnode props", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+  input.value = "abcd";
+
+  const binding = { value: 2 };
+  const vnode = {
+    componentOptions: {
+      propsData: { maxlen: 3 }
+    }
+  };
+
+  maxlenDirective.bind(host, binding, vnode);
+  maxlenDirective.inserted(host, binding, vnode);
+
+  input.dispatchEvent(new Event("input"));
+
+  assert.equal(input.value, "ab");
+});
+
+test("directive respects IME composition flow", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const binding = { value: 3 };
+  const vnode = {};
+
+  maxlenDirective.bind(host, binding, vnode);
+  maxlenDirective.inserted(host, binding, vnode);
+
+  let inputEvents = 0;
+  input.addEventListener("input", () => {
+    inputEvents += 1;
+  });
+
+  input.dispatchEvent(new Event("compositionstart"));
+  input.value = "abcd";
+  input.dispatchEvent(new Event("input"));
+
+  assert.equal(input.value, "abcd");
+  assert.equal(inputEvents, 1);
+
+  input.dispatchEvent(new Event("compositionend"));
+
+  assert.equal(input.value, "abc");
+  assert.equal(inputEvents, 2);
+});
+
+test("directive dispatches input for v-model sync", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+  input.value = "abcd";
+
+  const binding = { value: 3 };
+  const vnode = {};
+
+  maxlenDirective.bind(host, binding, vnode);
+  maxlenDirective.inserted(host, binding, vnode);
+
+  let modelValue = "";
+  input.addEventListener("input", () => {
+    modelValue = input.value;
+  });
+
+  input.dispatchEvent(new Event("input"));
+
+  assert.equal(modelValue, "abc");
+});
+
 test("auto-maxlen plugin wraps ElInput and attaches listeners", () => {
   const input = createInput();
   const host = createHost();
