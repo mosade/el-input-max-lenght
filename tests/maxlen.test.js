@@ -14,7 +14,7 @@ if (typeof Event === "undefined") {
 
 function createInput() {
   const listeners = new Map();
-  return {
+  const input = {
     value: "",
     addEventListener(type, handler) {
       if (!listeners.has(type)) listeners.set(type, new Set());
@@ -35,6 +35,8 @@ function createInput() {
       return listeners.get(type).size;
     }
   };
+  input.tagName = "INPUT";
+  return input;
 }
 
 function createTextarea() {
@@ -46,11 +48,32 @@ function createTextarea() {
 function createHost() {
   return {
     _input: null,
-    querySelector() {
-      return this._input;
+    querySelector(selector) {
+      if (!this._input) return null;
+      if (typeof selector !== "string") return null;
+      const tagName = this._input.tagName;
+      if (!tagName) return null;
+
+      const normalized = tagName.toLowerCase();
+      const selectors = selector
+        .split(",")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean);
+
+      if (selectors.includes(normalized)) return this._input;
+      return null;
     }
   };
 }
+
+test("createHost querySelector respects selector", () => {
+  const host = createHost();
+  const input = createInput();
+  host._input = input;
+
+  assert.equal(host.querySelector("textarea"), null);
+  assert.equal(host.querySelector("input, textarea"), input);
+});
 
 test("enforceMaxLen truncates over limit", () => {
   const result = enforceMaxLen("abcd", 3);
