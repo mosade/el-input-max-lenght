@@ -1,9 +1,9 @@
-function normalizeValue(value) {
+export function normalizeValue(value) {
   if (value === null || value === undefined) return "";
   return String(value);
 }
 
-function enforceMaxLen(value, limit) {
+export function enforceMaxLen(value, limit) {
   const normalized = normalizeValue(value);
   const safeLimit = Number.isFinite(limit) ? limit : 4000;
   if (normalized.length <= safeLimit) {
@@ -11,5 +11,3 @@ function enforceMaxLen(value, limit) {
   }
   return { value: normalized.slice(0, safeLimit), truncated: true };
 }
-
-module.exports = { normalizeValue, enforceMaxLen };

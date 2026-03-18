@@ -1,0 +1,30 @@
+{
+  "name": "el-input-max-length",
+  "version": "1.0.0",
+  "description": "Vue 2 + Vite + Element UI project",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mosade/el-input-max-lenght.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mosade/el-input-max-lenght/issues"
+  },
+  "homepage": "https://github.com/mosade/el-input-max-lenght#readme",
+  "dependencies": {
+    "element-ui": "^2.15.14",
+    "vue": "^2.7.16"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue2": "^2.3.4",
+    "vite": "^4.5.14"
+  }
+}

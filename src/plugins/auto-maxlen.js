@@ -1,4 +1,4 @@
-const { enforceMaxLen } = require("../utils/maxlen");
+import { enforceMaxLen } from "../utils/maxlen.js";
 
 function findNativeInput(el) {
   if (!el) return null;
@@ -7,10 +7,10 @@ function findNativeInput(el) {
 
 function getLimit(props) {
   if (props && props.maxlen !== undefined) return Number(props.maxlen) || 0;
-  return 4000;
+  return 10;
 }
 
-module.exports = function install(Vue) {
+export default function install(Vue) {
   const ElInput = Vue.options.components && Vue.options.components.ElInput;
   if (!ElInput) return;
 
@@ -40,7 +40,7 @@ module.exports = function install(Vue) {
       delete this.__maxlenState__;
     }
   });
-};
+}
 
 function attachListeners(instance) {
   if (!instance) return;

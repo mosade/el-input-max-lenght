@@ -1,4 +1,4 @@
-const { enforceMaxLen } = require("../utils/maxlen");
+import { enforceMaxLen } from "../utils/maxlen.js";
 
 function findNativeInput(el) {
   if (!el) return null;
@@ -14,7 +14,7 @@ function getLimit(binding, vnode) {
   return 4000;
 }
 
-module.exports = {
+export default {
   bind(el, binding, vnode) {
     el.__maxlenState__ = {
       binding,
