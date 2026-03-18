@@ -1,3 +1,6 @@
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { enforceMaxLen } = require("../src/utils/maxlen");
