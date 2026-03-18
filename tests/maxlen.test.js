@@ -674,6 +674,33 @@ test("override-maxlength uses propsData fallback on options", () => {
   assert.equal(input.getAttribute("maxlength"), "22");
 });
 
+test("override-maxlength checks options when vnode lacks maxlength", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: { type: "text" } } },
+    $options: { propsData: { maxlength: 31 } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+  assert.equal(input.getAttribute("maxlength"), "31");
+});
+
 test("override-maxlength re-checks on type switch", () => {
   const input = createInput();
   const host = createHost();

@@ -13,17 +13,20 @@ function getProvidedMaxlength(instance) {
     instance.$vnode.componentOptions &&
     instance.$vnode.componentOptions.propsData;
   const optionsProps = instance.$options && instance.$options.propsData;
-  const propsData = vnodeProps || optionsProps;
 
-  if (!propsData || typeof propsData !== "object") {
-    return { provided: false, value: undefined };
+  if (vnodeProps && typeof vnodeProps === "object") {
+    if (Object.prototype.hasOwnProperty.call(vnodeProps, "maxlength")) {
+      return { provided: true, value: vnodeProps.maxlength };
+    }
   }
 
-  if (!Object.prototype.hasOwnProperty.call(propsData, "maxlength")) {
-    return { provided: false, value: undefined };
+  if (optionsProps && typeof optionsProps === "object") {
+    if (Object.prototype.hasOwnProperty.call(optionsProps, "maxlength")) {
+      return { provided: true, value: optionsProps.maxlength };
+    }
   }
 
-  return { provided: true, value: propsData.maxlength };
+  return { provided: false, value: undefined };
 }
 
 function resolveMaxlength(provided) {
