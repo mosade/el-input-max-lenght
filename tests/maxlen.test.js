@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const { enforceMaxLen } = require("../src/utils/maxlen");
 const maxlenDirective = require("../src/directives/maxlen");
 const autoMaxlen = require("../src/plugins/auto-maxlen");
+const overrideMaxlength = require("../src/plugins/override-maxlength");
 
 if (typeof Event === "undefined") {
   global.Event = class Event {
@@ -14,6 +15,7 @@ if (typeof Event === "undefined") {
 
 function createInput() {
   const listeners = new Map();
+  const attributes = new Map();
   const input = {
     value: "",
     addEventListener(type, handler) {
@@ -29,6 +31,17 @@ function createInput() {
       for (const handler of listeners.get(event.type)) {
         handler(event);
       }
+    },
+    setAttribute(name, value) {
+      attributes.set(String(name), String(value));
+    },
+    removeAttribute(name) {
+      attributes.delete(String(name));
+    },
+    getAttribute(name) {
+      const key = String(name);
+      if (!attributes.has(key)) return null;
+      return attributes.get(key);
     },
     _listenerCount(type) {
       if (!listeners.has(type)) return 0;
@@ -434,4 +447,286 @@ test("auto-maxlen plugin reattaches on input replacement", () => {
   assert.equal(secondInput._listenerCount("input"), 1);
   assert.equal(secondInput._listenerCount("compositionstart"), 1);
   assert.equal(secondInput._listenerCount("compositionend"), 1);
+});
+
+test("override-maxlength registers ElInput2 and extends ElInput", () => {
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredName = name;
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  assert.equal(Vue._registeredName, "ElInput2");
+  const wrapper = Vue._registeredDefinition;
+  assert.equal(wrapper.extends, ElInput);
+});
+
+test("override-maxlength defaults to 4000 when maxlength missing", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: {} } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+
+  assert.equal(input.getAttribute("maxlength"), "4000");
+});
+
+test("override-maxlength applies explicit maxlength overrides", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: { maxlength: 12 } } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+
+  assert.equal(input.getAttribute("maxlength"), "12");
+});
+
+test("override-maxlength disables for null and zero", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: { maxlength: null } } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+
+  assert.equal(input.getAttribute("maxlength"), null);
+
+  instance.$vnode.componentOptions.propsData.maxlength = 0;
+  wrapper.updated.call(instance);
+  assert.equal(input.getAttribute("maxlength"), null);
+
+  instance.$vnode.componentOptions.propsData.maxlength = "0";
+  wrapper.updated.call(instance);
+  assert.equal(input.getAttribute("maxlength"), null);
+
+  instance.$vnode.componentOptions.propsData.maxlength = "";
+  wrapper.updated.call(instance);
+  assert.equal(input.getAttribute("maxlength"), null);
+});
+
+test("override-maxlength defaults for invalid values", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: { maxlength: undefined } } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+  assert.equal(input.getAttribute("maxlength"), "4000");
+
+  const cases = [-1, NaN, Infinity, -Infinity, "oops"];
+  for (const value of cases) {
+    instance.$vnode.componentOptions.propsData.maxlength = value;
+    wrapper.updated.call(instance);
+    assert.equal(input.getAttribute("maxlength"), "4000");
+  }
+});
+
+test("override-maxlength floors numeric string values", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: { maxlength: "10.5" } } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+  assert.equal(input.getAttribute("maxlength"), "10");
+});
+
+test("override-maxlength supports textarea elements", () => {
+  const textarea = createTextarea();
+  const host = createHost();
+  host._input = textarea;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: {} } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+  assert.equal(textarea.getAttribute("maxlength"), "4000");
+});
+
+test("override-maxlength uses propsData fallback on options", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: {},
+    $options: { propsData: { maxlength: 22 } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+  assert.equal(input.getAttribute("maxlength"), "22");
+});
+
+test("override-maxlength re-checks on type switch", () => {
+  const input = createInput();
+  const host = createHost();
+  host._input = input;
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: {} } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+
+  const textarea = createTextarea();
+  host._input = textarea;
+  wrapper.updated.call(instance);
+
+  assert.equal(textarea.getAttribute("maxlength"), "4000");
+});
+
+test("override-maxlength attaches when input appears later", () => {
+  const host = createHost();
+
+  const ElInput = function ElInput() {};
+  const Vue = {
+    options: { components: { ElInput } },
+    component(name, definition) {
+      this._registeredDefinition = definition;
+    }
+  };
+
+  overrideMaxlength(Vue);
+
+  const wrapper = Vue._registeredDefinition;
+  const instance = {
+    $el: host,
+    $vnode: { componentOptions: { propsData: {} } },
+    $nextTick: (fn) => fn()
+  };
+
+  wrapper.mounted.call(instance);
+
+  const input = createInput();
+  host._input = input;
+  wrapper.updated.call(instance);
+
+  assert.equal(input.getAttribute("maxlength"), "4000");
 });
