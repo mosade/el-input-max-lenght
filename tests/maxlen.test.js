@@ -4,9 +4,9 @@ const require = createRequire(import.meta.url);
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { enforceMaxLen } = require("../src/utils/maxlen");
-const maxlenDirective = require("../src/directives/maxlen");
-const autoMaxlen = require("../src/plugins/auto-maxlen");
-const overrideMaxlength = require("../src/plugins/override-maxlength");
+const maxlenDirective = require("../src/directives/maxlen").default;
+const autoMaxlen = require("../src/plugins/auto-maxlen").default;
+const overrideMaxlength = require("../src/plugins/override-maxlength").default;
 
 if (typeof Event === "undefined") {
   global.Event = class Event {
