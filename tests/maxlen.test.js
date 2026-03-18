@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const { enforceMaxLen } = require("../src/utils/maxlen");
 const maxlenDirective = require("../src/directives/maxlen").default;
 const autoMaxlen = require("../src/plugins/auto-maxlen").default;
@@ -759,4 +760,26 @@ test("override-maxlength attaches when input appears later", () => {
   wrapper.updated.call(instance);
 
   assert.equal(input.getAttribute("maxlength"), "4000");
+});
+
+test("demo renders ElInput2 override examples", () => {
+  const appContents = fs.readFileSync(
+    new URL("../src/App.vue", import.meta.url),
+    "utf8"
+  );
+
+  assert.ok(appContents.includes("<el-input2"));
+  assert.ok(appContents.includes("v-model=\"overrideText\""));
+  assert.ok(appContents.includes("placeholder=\"Override default 4000\""));
+  assert.ok(appContents.includes("v-model=\"overrideShort\""));
+  assert.ok(appContents.includes("placeholder=\"Override max 8\""));
+  assert.ok(appContents.includes("v-model=\"overrideDisabled\""));
+  assert.ok(appContents.includes("placeholder=\"Override disabled\""));
+  assert.ok(appContents.includes("type=\"textarea\""));
+  assert.ok(appContents.includes("v-model=\"overrideTextarea\""));
+  assert.ok(appContents.includes("placeholder=\"Override textarea\""));
+  assert.ok(appContents.includes("overrideText"));
+  assert.ok(appContents.includes("overrideShort"));
+  assert.ok(appContents.includes("overrideDisabled"));
+  assert.ok(appContents.includes("overrideTextarea"));
 });
